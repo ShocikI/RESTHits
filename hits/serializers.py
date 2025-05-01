@@ -9,13 +9,18 @@ class ArtistSerializer(serializers.HyperlinkedModelSerializer):
         fields = ['id', 'first_name', 'last_name', 'created_at']
 
 class HitSerializer(serializers.HyperlinkedModelSerializer):
+    artist = serializers.PrimaryKeyRelatedField(
+        queryset=Artist.objects.all(),
+        write_only=True
+    )
     artist_id = serializers.PrimaryKeyRelatedField(
-        queryset=Artist.objects.all()
+        queryset=Artist.objects.all(), 
+        source="artist"
     )
 
     class Meta:
         model = Hit
-        fields = ['title', 'artist_id', 'title', 'title_url', 'created_at', 'updated_at']
+        fields = ['title', 'artist', 'artist_id', 'title', 'title_url', 'created_at', 'updated_at']
         read_only_fields = ["created_at", "updated_at"]
 
     
