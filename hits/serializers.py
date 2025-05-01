@@ -16,6 +16,6 @@ class HitSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Hit
         fields = ['title', 'artist_id', 'title', 'title_url', 'created_at', 'updated_at']
-        read_only_fields = ["title_url", "created_at", "updated_at"]
+        read_only_fields = ["created_at", "updated_at"]
 
     
