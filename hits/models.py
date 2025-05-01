@@ -6,6 +6,8 @@ class Artist(models.Model):
     last_name = models.CharField(max_length=32, blank=False)
     created_at = models.DateField(auto_now_add=True)
 
+    class Meta:
+        ordering = ['created_at']
 
 class Hit(models.Model):
     title = models.CharField(max_length=128, blank=False)
@@ -14,3 +16,5 @@ class Hit(models.Model):
     created_at = models.DateField(auto_now_add=True)
     updated_at = models.DateField(auto_now=True)
 
+    class Meta:
+        ordering = ['-created_at']
