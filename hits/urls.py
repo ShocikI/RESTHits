@@ -5,8 +5,8 @@ from hits.views import HitViewSet, ArtistViewSet
 
 
 router = DefaultRouter()
-router.register(r'hits', HitViewSet, basename="hits")
-router.register(r'artists', ArtistViewSet, basename="artists")
+router.register(r'hits', HitViewSet, basename="hit")
+router.register(r'artists', ArtistViewSet, basename="artist")
 
 urlpatterns = [
     re_path(r'^', include(router.urls))
