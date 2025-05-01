@@ -74,6 +74,16 @@ class ArtistAPITestCase(APITestCase):
         artists_counter = Artist.objects.all().count()
         self.assertEqual(artists_counter, 1)
 
+    def test_retrieve_not_existing_artist(self):
+        detail_url = reverse("artist-detail", args=[999])
+        response = self.client.get(detail_url, format='json')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+    
+    def test_patch_not_existing_artist(self):
+        detail_url = reverse("artist-detail", args=[999])
+        response = self.client.get(detail_url, {"first_name": "Bob"}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
     def test_list_artists(self):
         Artist.objects.create(first_name="Bob", last_name="Marley")
         Artist.objects.create(first_name="Sanah")
@@ -110,7 +120,7 @@ class HitAPITestCase(APITestCase):
         response = self.client.post(self.list_url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-    def test_retrieve_hit(self):
+    def test_retrieve_hit_success(self):
         title = "What A Wonderful World"
         title_url = generate_title_url(self.artist, title)
         hit = Hit.objects.create(
@@ -122,6 +132,11 @@ class HitAPITestCase(APITestCase):
         response = self.client.get(url, format="json")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['title'], title)
+
+    def test_retrieve_test_failed(self):
+        url = reverse("hit-detail", args=["not_existing_url"])
+        response = self.client.get(url, format="json")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_list_hits(self):
         title_1 = "Hit1"
@@ -137,3 +152,47 @@ class HitAPITestCase(APITestCase):
         response = self.client.get(self.list_url, format="json")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertGreaterEqual(len(response.data), 2)
+
+    def test_patch_fields_hit(self):
+        artist = Artist.objects.create(first_name="Sanah")
+        original_title = "What A Wonderful World"
+        patched_title = "Koronki"
+        
+        original_url = generate_title_url(self.artist, original_title)
+        patched_url = generate_title_url(artist, patched_title)
+
+        hit = Hit.objects.create(
+            artist=self.artist,
+            title=original_title,
+            title_url=original_url
+        )
+        
+        detail_url = reverse("hit-detail", args=[hit.title_url])
+        response = self.client.patch(detail_url, data={"artist": artist.id}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["artist_id"], artist.id)
+
+        response = self.client.patch(detail_url, data={"title": patched_title}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["title"], patched_title)
+
+        response = self.client.patch(detail_url, data={"title_url": patched_url}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["title_url"], patched_url)
+
+    def test_delete_hit(self):
+        hit = Hit.objects.create(
+            artist=self.artist,
+            title="Koronki",
+            title_url="very_long_url"
+        )
+        detail_url = reverse("hit-detail", args=[hit.title_url])
+        response = self.client.delete(detail_url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+    
+    def test_delete_not_existing_hit(self):
+        detail_url = reverse("hit-detail", args=["not_existing_url"])
+        response = self.client.delete(detail_url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
