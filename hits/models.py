@@ -24,7 +24,10 @@ class Artist(models.Model):
         ordering = ['created_at']
 
     def __str__(self):
-        return f"{self.first_name} {self.last_name}"
+        """String representation of the artist."""
+        if self.first_name and self.last_name:
+            return f"{self.first_name} {self.last_name}"
+        return self.first_name or self.last_name or "Unknown Artist"
 
 
 class Hit(models.Model):
@@ -54,4 +57,5 @@ class Hit(models.Model):
         ordering = ['-created_at']
     
     def __str__(self):
-        return f"{self.artist.first_name} {self.artist.last_name} - {self.title}"
+        """String representation of the hit."""
+        return f"{self.artist} - {self.title}"
