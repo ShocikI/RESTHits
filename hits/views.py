@@ -1,6 +1,7 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
+from rest_framework.exceptions import ValidationError
 
 from .utils import generate_title_url
 from hits.serializers import (
@@ -27,6 +28,33 @@ class ArtistViewSet(viewsets.ModelViewSet):
     serializer_class = ArtistSerializer
     queryset = Artist.objects.all()
 
+    def validate_input(self, data):
+        """
+        Validate artist input data.
+        
+        Args:
+            data: Dictionary containing artist data
+            
+        Raises:
+            ValidationError: If the data is invalid
+        """
+        if not data.get('first_name') and not data.get('last_name'):
+            raise ValidationError("First_name or last_name is required.")
+        
+        if len(data.get('first_name', '')) > 32:
+            raise ValidationError("First name cannot exceed 32 characters.")
+            
+        if len(data.get('last_name', '')) > 32:
+            raise ValidationError("Last name cannot exceed 32 characters.")
+
+    def create(self, request, *args, **kwargs):
+        self.validate_input(request.data)
+        return super().create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        self.validate_input(request.data)
+        return super().update(request, *args, **kwargs)
+
 
 class HitViewSet(viewsets.ModelViewSet):
     """
@@ -49,6 +77,22 @@ class HitViewSet(viewsets.ModelViewSet):
     queryset = Hit.objects.all()
     lookup_field = 'title_url'
 
+    def validate_input(self, data):
+        """
+        Validate hit input data.
+        
+        Args:
+            data: Dictionary containing hit data
+            
+        Raises:
+            ValidationError: If the data is invalid
+        """
+        if 'title' in data and len(data['title']) > 128:
+            raise ValidationError("Title cannot exceed 128 characters.")
+            
+        if 'artist_id' in data and not isinstance(data['artist_id'], int):
+            raise ValidationError("artist_id must be an integer.")
+
     def create(self, request, *args, **kwargs):
         """
         Create a new hit.
@@ -64,6 +108,8 @@ class HitViewSet(viewsets.ModelViewSet):
                 - 400 Bad Request: Missing required fields
                 - 404 Not Found: Artist not found
         """
+        self.validate_input(request.data)
+        
         artist_id = request.data.get('artist_id')
         title = request.data.get('title')
 
@@ -74,7 +120,6 @@ class HitViewSet(viewsets.ModelViewSet):
             )
 
         artist = get_object_or_404(Artist, pk=artist_id)
-        
         title_url = generate_title_url(artist, title)
 
         hit = Hit.objects.create(
@@ -105,9 +150,11 @@ class HitViewSet(viewsets.ModelViewSet):
                 - 400 Bad Request: Invalid data
                 - 404 Not Found: Hit or artist not found
         """
+        self.validate_input(request.data)
         partial = kwargs.pop('partial', True)
-        hit = get_object_or_404(Hit, title_url=title_url)
 
+        hit = get_object_or_404(Hit, title_url=title_url)
+        
         artist_id = request.data.get("artist_id")
         if artist_id and artist_id != hit.artist.id:
             artist = get_object_or_404(Artist, pk=artist_id)
@@ -133,7 +180,7 @@ class HitViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(hit, data=data, partial=partial)
         if not serializer.is_valid():
-            return Response( serializer.errors, status=status.HTTP_400_BAD_REQUEST )
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
         self.perform_update(serializer)
         return Response(serializer.data, status=status.HTTP_200_OK)
