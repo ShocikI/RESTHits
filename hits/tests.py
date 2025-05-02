@@ -21,8 +21,8 @@ class UtilsTestCase(APITestCase):
     def test_generate_title_url_basic(self):
         """Test basic title URL generation."""
         url = generate_title_url(self.artist, "What A Wonderful World")
-        self.assertTrue(url.startswith("louis_armstrong-what_a_wonderful_world_"))
-        self.assertTrue(url.endswith("_1") or url.endswith("_2"))
+        self.assertTrue(url.startswith("louis_armstrong-what_a_wonderful_world"))
+        self.assertFalse(url.endswith("_1") or url.endswith("_2"))
 
     def test_generate_title_url_unicode_and_spaces(self):
         """Test title URL generation with Unicode characters and spaces."""
