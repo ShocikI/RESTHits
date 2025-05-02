@@ -4,6 +4,16 @@ from re import sub
 from .models import Artist, Hit
 
 def generate_title_url(artist: Artist, title: str) -> str:
+    """
+    Generate a unique URL-friendly slug for a hit song.
+    
+    Args:
+        artist: The Artist instance
+        title: The title of the hit song
+        
+    Returns:
+        A unique URL-friendly string in the format: firstname_lastname-title_counter
+    """
     # Clean and normalize the components
     clean_first_name = sub(r'\s+', '_', unidecode(artist.first_name.strip().lower()))
     clean_last_name = sub(r'\s+', '_', unidecode(artist.last_name.strip().lower()))
