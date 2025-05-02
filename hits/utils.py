@@ -3,20 +3,25 @@ from re import sub
 
 from .models import Artist, Hit
 
-def generate_title_url(artist: Artist, title: str):
-    title_url = ""
-
+def generate_title_url(artist: Artist, title: str) -> str:
+    # Clean and normalize the components
     clean_first_name = sub(r'\s+', '_', unidecode(artist.first_name.strip().lower()))
     clean_last_name = sub(r'\s+', '_', unidecode(artist.last_name.strip().lower()))
     clean_title = sub(r'\s+', '_', unidecode(title.strip().lower()))
 
-    if clean_first_name != "" and clean_last_name != "":
-        clean_last_name = f"_{clean_last_name}"
-    
-    title_url = f"{clean_first_name}{clean_last_name}-{clean_title}"
-    titles_counter = 1
+    # Build the base URL
+    if clean_first_name and clean_last_name:
+        base_url = f"{clean_first_name}_{clean_last_name}-{clean_title}"
+    else:
+        base_url = f"{clean_first_name}{clean_last_name}-{clean_title}"
 
-    repetitions = Hit.objects.filter(artist_id=artist.id, title=title).count()
-    titles_counter += repetitions
+    # Start with the base URL
+    title_url = base_url
+    counter = 1
 
-    return f"{title_url}_{titles_counter}"
+    # Keep incrementing the counter until we find a unique URL
+    while Hit.objects.filter(title_url=title_url).exists():
+        title_url = f"{base_url}_{counter}"
+        counter += 1
+
+    return title_url
