@@ -5,37 +5,24 @@ from django.urls import reverse
 from hits.models import Artist, Hit
 from hits.utils import generate_title_url
 
+
+# =============================================================================
+# Utility Function Tests
+# =============================================================================
 class UtilsTestCase(APITestCase):
     """Test cases for utility functions."""
     
     def setUp(self):
         self.artist = Artist.objects.create(first_name="Louis", last_name="Armstrong")
     
+    # -------------------------------------------------------------------------
+    # Basic URL Generation Tests
+    # -------------------------------------------------------------------------
     def test_generate_title_url_basic(self):
         """Test basic title URL generation."""
         url = generate_title_url(self.artist, "What A Wonderful World")
-        self.assertTrue(url.startswith("louis_armstrong-what_a_wonderful_world"))
-        # The URL should not end with a counter if it's unique
-        self.assertFalse(url.endswith("_1") or url.endswith("_2"))
-
-    def test_generate_title_url_increment(self):
-        """Test title URL generation with multiple hits."""
-        hit_title = "Mega hit"
-        title_url_1 = generate_title_url(self.artist, hit_title)
-    
-        # Create first hit
-        Hit.objects.create(artist=self.artist, title=hit_title, title_url=title_url_1)
-        
-        # Create second hit with the same title
-        url = generate_title_url(self.artist, hit_title)
-        self.assertTrue(url.endswith("_1"))  # Should append _1 for the first duplicate
-        
-        # Create the second hit
-        Hit.objects.create(artist=self.artist, title=hit_title, title_url=url)
-        
-        # Try to create another hit with the same title
-        url = generate_title_url(self.artist, hit_title)
-        self.assertTrue(url.endswith("_2"))  # Should append _2 for the second duplicate
+        self.assertTrue(url.startswith("louis_armstrong-what_a_wonderful_world_"))
+        self.assertTrue(url.endswith("_1") or url.endswith("_2"))
 
     def test_generate_title_url_unicode_and_spaces(self):
         """Test title URL generation with Unicode characters and spaces."""
@@ -43,6 +30,9 @@ class UtilsTestCase(APITestCase):
         url = generate_title_url(artist, " łabędźi    śpiew  ")
         self.assertIn("lao_che-labedzi_spiew", url)
 
+    # -------------------------------------------------------------------------
+    # Edge Case Tests
+    # -------------------------------------------------------------------------
     def test_generate_title_url_only_first_name(self):
         """Test title URL generation with only first name."""
         artist = Artist.objects.create(first_name="Bob")
@@ -69,7 +59,32 @@ class UtilsTestCase(APITestCase):
         url = generate_title_url(artist, long_title)
         self.assertLessEqual(len(url), 256)  # title_url field max length
 
+    # -------------------------------------------------------------------------
+    # Duplicate Handling Tests
+    # -------------------------------------------------------------------------
+    def test_generate_title_url_increment(self):
+        """Test title URL generation with multiple hits."""
+        hit_title = "Mega hit"
+        title_url_1 = generate_title_url(self.artist, hit_title)
+    
+        # Create first hit
+        Hit.objects.create(artist=self.artist, title=hit_title, title_url=title_url_1)
+        
+        # Create second hit with the same title
+        url = generate_title_url(self.artist, hit_title)
+        self.assertTrue(url.endswith("_1"))  # Should append _1 for the first duplicate
+        
+        # Create the second hit
+        Hit.objects.create(artist=self.artist, title=hit_title, title_url=url)
+        
+        # Try to create another hit with the same title
+        url = generate_title_url(self.artist, hit_title)
+        self.assertTrue(url.endswith("_2"))  # Should append _2 for the second duplicate
 
+
+# =============================================================================
+# Artist API Tests
+# =============================================================================
 class ArtistAPITestCase(APITestCase):
     """Test cases for Artist API endpoints."""
     
@@ -77,6 +92,9 @@ class ArtistAPITestCase(APITestCase):
         self.artist = Artist.objects.create(first_name="Louis", last_name="Armstrong")
         self.list_url = reverse("artist-list")
     
+    # -------------------------------------------------------------------------
+    # CRUD Operation Tests
+    # -------------------------------------------------------------------------
     def test_CRUD_artist(self):
         """Test complete CRUD operations for artists."""
         # Create
@@ -106,6 +124,9 @@ class ArtistAPITestCase(APITestCase):
         artists_counter = Artist.objects.all().count()
         self.assertEqual(artists_counter, 1)
 
+    # -------------------------------------------------------------------------
+    # Validation Tests
+    # -------------------------------------------------------------------------
     def test_create_artist_validation(self):
         """Test artist creation with invalid data."""
         # Missing required fields
@@ -118,6 +139,9 @@ class ArtistAPITestCase(APITestCase):
         response = self.client.post(self.list_url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    # -------------------------------------------------------------------------
+    # Error Handling Tests
+    # -------------------------------------------------------------------------
     def test_retrieve_not_existing_artist(self):
         """Test retrieving non-existent artist."""
         detail_url = reverse("artist-detail", args=[999])
@@ -130,6 +154,9 @@ class ArtistAPITestCase(APITestCase):
         response = self.client.patch(detail_url, {"first_name": "Bob"}, format="json")
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
+    # -------------------------------------------------------------------------
+    # List Operation Tests
+    # -------------------------------------------------------------------------
     def test_list_artists(self):
         """Test listing all artists."""
         Artist.objects.create(first_name="Bob", last_name="Marley")
@@ -153,6 +180,9 @@ class ArtistAPITestCase(APITestCase):
             )
 
 
+# =============================================================================
+# Hit API Tests
+# =============================================================================
 class HitAPITestCase(APITestCase):
     """Test cases for Hit API endpoints."""
     
@@ -160,6 +190,9 @@ class HitAPITestCase(APITestCase):
         self.artist = Artist.objects.create(first_name='Louis', last_name="Armstrong")
         self.list_url = reverse('hit-list')
 
+    # -------------------------------------------------------------------------
+    # CRUD Operation Tests
+    # -------------------------------------------------------------------------
     def test_create_hit_success(self):
         """Test successful hit creation."""
         title_name = "What A Wonderful World"
@@ -168,43 +201,6 @@ class HitAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data["title"], title_name)
         self.assertTrue("title_url" in response.data)
-
-    def test_create_hit_validation(self):
-        """Test hit creation with invalid data."""
-        # Missing required fields
-        no_title_data = { "artist_id": self.artist.id }
-        response = self.client.post(self.list_url, no_title_data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-        no_artist_id = { "title": "What A Wonderful World" }
-        response = self.client.post(self.list_url, no_artist_id, format="json")
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-        # Invalid artist_id
-        data = { "artist_id": "not_an_id", "title": "What A Wonderful World" }
-        response = self.client.post(self.list_url, data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-        # Title length validation
-        data = { "artist_id": self.artist.id, "title": "a" * 129 }  # Exceeds max_length
-        response = self.client.post(self.list_url, data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_create_hit_unknown_artist(self):
-        """Test hit creation with non-existent artist."""
-        data = { "artist_id": 999, "title": "What A Wonderful World" }
-        response = self.client.post(self.list_url, data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-    
-    def test_create_empty_hit(self):
-        """Test hit creation with empty data."""
-        data = {}
-        response = self.client.post(self.list_url, data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-        data = { "artist_id": "", "title": "" }
-        response = self.client.post(self.list_url, data, format="json")
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_retrieve_hit_success(self):
         """Test successful hit retrieval."""
@@ -219,50 +215,6 @@ class HitAPITestCase(APITestCase):
         response = self.client.get(url, format="json")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['title'], title)
-
-    def test_retrieve_hit_not_existing(self):
-        """Test retrieving non-existent hit."""
-        url = reverse("hit-detail", args=["not_existing_url"])
-        response = self.client.get(url, format="json")
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-
-    def test_list_hits(self):
-        """Test listing all hits."""
-        title_1 = "Hit1"
-        title_2 = "Hit2"
-        Hit.objects.create(
-            artist=self.artist, title=title_1, 
-            title_url=generate_title_url(self.artist, title_1)
-        )
-        Hit.objects.create(
-            artist=self.artist, title=title_2,
-            title_url=generate_title_url(self.artist, title_2)
-        )
-        response = self.client.get(self.list_url, format="json")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertGreaterEqual(len(response.data), 2)
-
-    def test_list_hits_ordering(self):
-        """Test hit list ordering by creation date."""
-        title_1 = "Hit1"
-        title_2 = "Hit2"
-        Hit.objects.create(
-            artist=self.artist, title=title_1, 
-            title_url=generate_title_url(self.artist, title_1)
-        )
-        Hit.objects.create(
-            artist=self.artist, title=title_2,
-            title_url=generate_title_url(self.artist, title_2)
-        )
-        response = self.client.get(self.list_url, format="json")
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        # Check if hits are ordered by created_at in descending order
-        hits = response.data.get('results', response.data)  # Handle both paginated and non-paginated responses
-        for i in range(len(hits) - 1):
-            self.assertGreaterEqual(
-                hits[i]['created_at'],
-                hits[i + 1]['created_at']
-            )
 
     def test_patch_hit(self):
         """Test partial hit update."""
@@ -322,6 +274,67 @@ class HitAPITestCase(APITestCase):
         self.assertEqual(response.data["title"], "Koronki")
         self.assertEqual(response.data["title_url"], new_url)
 
+    def test_delete_hit(self):
+        """Test hit deletion."""
+        hit = Hit.objects.create(
+            artist=self.artist,
+            title="Koronki",
+            title_url="very_long_url"
+        )
+        detail_url = reverse("hit-detail", args=[hit.title_url])
+        response = self.client.delete(detail_url)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Hit.objects.filter(title_url=hit.title_url).exists())
+
+    # -------------------------------------------------------------------------
+    # Validation Tests
+    # -------------------------------------------------------------------------
+    def test_create_hit_validation(self):
+        """Test hit creation with invalid data."""
+        # Missing required fields
+        no_title_data = { "artist_id": self.artist.id }
+        response = self.client.post(self.list_url, no_title_data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        no_artist_id = { "title": "What A Wonderful World" }
+        response = self.client.post(self.list_url, no_artist_id, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # Invalid artist_id
+        data = { "artist_id": "not_an_id", "title": "What A Wonderful World" }
+        response = self.client.post(self.list_url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # Title length validation
+        data = { "artist_id": self.artist.id, "title": "a" * 129 }  # Exceeds max_length
+        response = self.client.post(self.list_url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_create_empty_hit(self):
+        """Test hit creation with empty data."""
+        data = {}
+        response = self.client.post(self.list_url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        data = { "artist_id": "", "title": "" }
+        response = self.client.post(self.list_url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    # -------------------------------------------------------------------------
+    # Error Handling Tests
+    # -------------------------------------------------------------------------
+    def test_create_hit_unknown_artist(self):
+        """Test hit creation with non-existent artist."""
+        data = { "artist_id": 999, "title": "What A Wonderful World" }
+        response = self.client.post(self.list_url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_retrieve_hit_not_existing(self):
+        """Test retrieving non-existent hit."""
+        url = reverse("hit-detail", args=["not_existing_url"])
+        response = self.client.get(url, format="json")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
     def test_patch_hit_not_existing(self):
         """Test updating non-existent hit."""
         artist = Artist.objects.create(first_name="Sanah")
@@ -337,22 +350,51 @@ class HitAPITestCase(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-    def test_delete_hit(self):
-        """Test hit deletion."""
-        hit = Hit.objects.create(
-            artist=self.artist,
-            title="Koronki",
-            title_url="very_long_url"
-        )
-        detail_url = reverse("hit-detail", args=[hit.title_url])
-        response = self.client.delete(detail_url)
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertFalse(Hit.objects.filter(title_url=hit.title_url).exists())
-
     def test_delete_hit_not_existing(self):
         """Test deleting non-existent hit."""
         detail_url = reverse("hit-detail", args=["not_existing_url"])
         response = self.client.delete(detail_url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    # -------------------------------------------------------------------------
+    # List Operation Tests
+    # -------------------------------------------------------------------------
+    def test_list_hits(self):
+        """Test listing all hits."""
+        title_1 = "Hit1"
+        title_2 = "Hit2"
+        Hit.objects.create(
+            artist=self.artist, title=title_1, 
+            title_url=generate_title_url(self.artist, title_1)
+        )
+        Hit.objects.create(
+            artist=self.artist, title=title_2,
+            title_url=generate_title_url(self.artist, title_2)
+        )
+        response = self.client.get(self.list_url, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(response.data), 2)
+
+    def test_list_hits_ordering(self):
+        """Test hit list ordering by creation date."""
+        title_1 = "Hit1"
+        title_2 = "Hit2"
+        Hit.objects.create(
+            artist=self.artist, title=title_1, 
+            title_url=generate_title_url(self.artist, title_1)
+        )
+        Hit.objects.create(
+            artist=self.artist, title=title_2,
+            title_url=generate_title_url(self.artist, title_2)
+        )
+        response = self.client.get(self.list_url, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # Check if hits are ordered by created_at in descending order
+        hits = response.data.get('results', response.data)  # Handle both paginated and non-paginated responses
+        for i in range(len(hits) - 1):
+            self.assertGreaterEqual(
+                hits[i]['created_at'],
+                hits[i + 1]['created_at']
+            )
 
 
