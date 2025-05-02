@@ -9,16 +9,61 @@ from hits.serializers import (
 )
 
 class ArtistViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing Artist resources.
+    
+    Provides CRUD operations for artists with the following endpoints:
+    - GET /api/v1/artists/ - List all artists
+    - POST /api/v1/artists/ - Create a new artist
+    - GET /api/v1/artists/{id}/ - Retrieve a specific artist
+    - PUT /api/v1/artists/{id}/ - Update an artist
+    - PATCH /api/v1/artists/{id}/ - Partially update an artist
+    - DELETE /api/v1/artists/{id}/ - Delete an artist
+    
+    Attributes:
+        serializer_class: The serializer class used for artist data
+        queryset: The base queryset for artist objects
+    """
     serializer_class = ArtistSerializer
     queryset = Artist.objects.all()
 
 
 class HitViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing Hit resources.
+    
+    Provides CRUD operations for hits with the following endpoints:
+    - GET /api/v1/hits/ - List all hits
+    - POST /api/v1/hits/ - Create a new hit
+    - GET /api/v1/hits/{title_url}/ - Retrieve a specific hit
+    - PUT /api/v1/hits/{title_url}/ - Update a hit
+    - PATCH /api/v1/hits/{title_url}/ - Partially update a hit
+    - DELETE /api/v1/hits/{title_url}/ - Delete a hit
+    
+    Attributes:
+        serializer_class: The serializer class used for hit data
+        queryset: The base queryset for hit objects
+        lookup_field: The field used for looking up individual hits (title_url)
+    """
     serializer_class = HitSerializer
     queryset = Hit.objects.all()
     lookup_field = 'title_url'
 
     def create(self, request, *args, **kwargs):
+        """
+        Create a new hit.
+        
+        Args:
+            request: The HTTP request object containing:
+                - artist_id: ID of the artist who created the hit
+                - title: Title of the hit
+            
+        Returns:
+            Response: HTTP response with:
+                - 201 Created: Successfully created hit with hit data
+                - 400 Bad Request: Missing required fields
+                - 404 Not Found: Artist not found
+        """
         artist_id = request.data.get('artist_id')
         title = request.data.get('title')
 
@@ -42,6 +87,24 @@ class HitViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
     def update(self, request, title_url, *args, **kwargs):
+        """
+        Update an existing hit.
+        
+        Args:
+            request: The HTTP request object containing:
+                - artist_id: (optional) New artist ID
+                - title: (optional) New title
+                - title_url: (optional) New title URL
+            title_url: The title_url of the hit to update
+            *args: Additional arguments
+            **kwargs: Additional keyword arguments
+            
+        Returns:
+            Response: HTTP response with:
+                - 200 OK: Successfully updated hit with hit data
+                - 400 Bad Request: Invalid data
+                - 404 Not Found: Hit or artist not found
+        """
         partial = kwargs.pop('partial', True)
         hit = get_object_or_404(Hit, title_url=title_url)
 
