@@ -7,6 +7,12 @@ class Artist(models.Model):
     created_at = models.DateField(auto_now_add=True)
 
     class Meta:
+        """
+        Metadata options for the Artist model.
+        
+        Attributes:
+            ordering (list): Specifies the default ordering of artists by creation date.
+        """
         ordering = ['created_at']
 
     def __str__(self):
@@ -14,6 +20,16 @@ class Artist(models.Model):
 
 
 class Hit(models.Model):
+    """
+    Represents a hit song in the system.
+    
+    Attributes:
+        title (str): The title of the hit song. Required, max length 128 characters.
+        artist (Artist): The artist who created this hit. Required, foreign key to Artist model.
+        title_url (str): A unique URL-friendly slug for the hit. Required, max length 256 characters.
+        created_at (date): The date when the hit was added to the system. Automatically set.
+        updated_at (date): The date when the hit was last modified. Automatically updated.
+    """
     title = models.CharField(max_length=128, blank=False)
     artist = models.ForeignKey(Artist, on_delete=models.CASCADE, blank=False)
     title_url = models.CharField(max_length=256, blank=False, unique=True)
@@ -21,6 +37,12 @@ class Hit(models.Model):
     updated_at = models.DateField(auto_now=True)
 
     class Meta:
+        """
+        Metadata options for the Hit model.
+        
+        Attributes:
+            ordering (list): Specifies the default ordering of hits by creation date in descending order.
+        """
         ordering = ['-created_at']
     
     def __str__(self):
