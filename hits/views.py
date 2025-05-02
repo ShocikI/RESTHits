@@ -1,5 +1,6 @@
 from rest_framework import viewsets, status
 from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
 
 from .utils import generate_title_url
 from hits.serializers import (
@@ -27,12 +28,7 @@ class HitViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        try:
-            artist = Artist.objects.get(pk=artist_id)
-        except Artist.DoesNotExist:
-            return Response(
-                {"detail": "Unknown artist."}, status=status.HTTP_404_NOT_FOUND    
-            )
+        artist = get_object_or_404(Artist, pk=artist_id)
         
         title_url = generate_title_url(artist, title)
 
@@ -47,32 +43,13 @@ class HitViewSet(viewsets.ModelViewSet):
     
     def update(self, request, title_url, *args, **kwargs):
         partial = kwargs.pop('partial', True)
+        hit = get_object_or_404(Hit, title_url=title_url)
 
-        try:
-            hit = Hit.objects.get(title_url=title_url)
-        except Hit.DoesNotExist:
-            return Response(
-                {"detail": "Hit not been found."}, 
-                status=status.HTTP_404_NOT_FOUND
-            )
-        
         artist_id = request.data.get("artist_id")
         if artist_id and artist_id != hit.artist.id:
-            try:
-                artist = Artist.objects.get(id=artist_id)
-            except Artist.DoesNotExist:
-                return Response(
-                    {"detail": "Artist not been found."},
-                    status=status.HTTP_404_NOT_FOUND
-                )
+            artist = get_object_or_404(Artist, pk=artist_id)
         else:
-            try:
-                artist = Artist.objects.get(id=hit.artist.id)
-            except Artist.DoesNotExist:
-                return Response(
-                    {"detail": "Artist not been found."},
-                    status=status.HTTP_404_NOT_FOUND
-                )
+            artist = get_object_or_404(Artist, pk=hit.artist.id)
 
         title = request.data.get("title")
         if not title:
