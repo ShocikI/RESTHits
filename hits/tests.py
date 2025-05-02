@@ -6,18 +6,22 @@ from hits.models import Artist, Hit
 from hits.utils import generate_title_url
 
 class UtilsTestCase(APITestCase):
+    """Test cases for utility functions."""
+    
     def setUp(self):
         self.artist = Artist.objects.create(first_name="Louis", last_name="Armstrong")
     
     def test_generate_title_url_basic(self):
+        """Test basic title URL generation."""
         url = generate_title_url(self.artist, "What A Wonderful World")
-        self.assertTrue(url.startswith("louis_armstrong-what_a_wonderful_world_"))
-        self.assertTrue(url.endswith("_1") or url.endswith("_2"))
+        self.assertTrue(url.startswith("louis_armstrong-what_a_wonderful_world"))
+        # The URL should not end with a counter if it's unique
+        self.assertFalse(url.endswith("_1") or url.endswith("_2"))
 
     def test_generate_title_url_increment(self):
+        """Test title URL generation with multiple hits."""
         hit_title = "Mega hit"
         title_url_1 = generate_title_url(self.artist, hit_title)
-        title_url_2 = generate_title_url(self.artist, hit_title)
     
         # Create first hit
         Hit.objects.create(artist=self.artist, title=hit_title, title_url=title_url_1)
@@ -34,26 +38,31 @@ class UtilsTestCase(APITestCase):
         self.assertTrue(url.endswith("_2"))  # Should append _2 for the second duplicate
 
     def test_generate_title_url_unicode_and_spaces(self):
+        """Test title URL generation with Unicode characters and spaces."""
         artist = Artist.objects.create(first_name="Łąó ", last_name=" Ćhę")
         url = generate_title_url(artist, " łabędźi    śpiew  ")
         self.assertIn("lao_che-labedzi_spiew", url)
 
     def test_generate_title_url_only_first_name(self):
+        """Test title URL generation with only first name."""
         artist = Artist.objects.create(first_name="Bob")
         url = generate_title_url(artist, "Long title")
         self.assertTrue(url.startswith("bob-long_title"))
 
     def test_generate_title_url_only_last_name(self):
+        """Test title URL generation with only last name."""
         artist = Artist.objects.create(last_name="Marley")
         url = generate_title_url(artist, "Long title")
         self.assertTrue(url.startswith("marley-long_title"))
     
     def test_generate_title_url_without_letters(self):
+        """Test title URL generation with special characters."""
         artist = Artist.objects.create(first_name="';]..,'", last_name=")12(")
         url = generate_title_url(artist, "@#$%!)?")
         self.assertTrue(url.startswith("';]..,'_)12(-@#$%!)?"))
 
     def test_generate_title_url_max_length(self):
+        """Test title URL generation with maximum length fields."""
         long_name = "a" * 32
         long_title = "b" * 128
         artist = Artist.objects.create(first_name=long_name, last_name=long_name)
@@ -62,13 +71,15 @@ class UtilsTestCase(APITestCase):
 
 
 class ArtistAPITestCase(APITestCase):
+    """Test cases for Artist API endpoints."""
+    
     def setUp(self):
         self.artist = Artist.objects.create(first_name="Louis", last_name="Armstrong")
         self.list_url = reverse("artist-list")
     
     def test_CRUD_artist(self):
+        """Test complete CRUD operations for artists."""
         # Create
-        get_url = reverse("artist-list")
         data = {"first_name": "Niel", "last_name": "Armstrong"}
         post_response = self.client.post(self.list_url, data, format="json")
         self.assertEqual(post_response.status_code, status.HTTP_201_CREATED)
@@ -96,6 +107,7 @@ class ArtistAPITestCase(APITestCase):
         self.assertEqual(artists_counter, 1)
 
     def test_create_artist_validation(self):
+        """Test artist creation with invalid data."""
         # Missing required fields
         data = {"first_name": "John"}
         response = self.client.post(self.list_url, data, format="json")
@@ -107,24 +119,27 @@ class ArtistAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_retrieve_not_existing_artist(self):
+        """Test retrieving non-existent artist."""
         detail_url = reverse("artist-detail", args=[999])
         response = self.client.get(detail_url, format='json')
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
     
     def test_patch_not_existing_artist(self):
+        """Test updating non-existent artist."""
         detail_url = reverse("artist-detail", args=[999])
-        response = self.client.get(detail_url, {"first_name": "Bob"}, format="json")
+        response = self.client.patch(detail_url, {"first_name": "Bob"}, format="json")
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_list_artists(self):
+        """Test listing all artists."""
         Artist.objects.create(first_name="Bob", last_name="Marley")
         Artist.objects.create(first_name="Sanah")
-        list_url = reverse("artist-list")
-        response = self.client.get(list_url, format="json")
+        response = self.client.get(self.list_url, format="json")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertGreaterEqual(len(response.data), 3)
 
     def test_list_artists_ordering(self):
+        """Test artist list ordering by creation date."""
         Artist.objects.create(first_name="Bob", last_name="Marley")
         Artist.objects.create(first_name="Sanah")
         response = self.client.get(self.list_url, format="json")
@@ -139,11 +154,14 @@ class ArtistAPITestCase(APITestCase):
 
 
 class HitAPITestCase(APITestCase):
+    """Test cases for Hit API endpoints."""
+    
     def setUp(self):
         self.artist = Artist.objects.create(first_name='Louis', last_name="Armstrong")
         self.list_url = reverse('hit-list')
 
     def test_create_hit_success(self):
+        """Test successful hit creation."""
         title_name = "What A Wonderful World"
         data = { "artist_id": self.artist.id, "title": title_name }
         response = self.client.post(self.list_url, data, format="json")
@@ -152,6 +170,7 @@ class HitAPITestCase(APITestCase):
         self.assertTrue("title_url" in response.data)
 
     def test_create_hit_validation(self):
+        """Test hit creation with invalid data."""
         # Missing required fields
         no_title_data = { "artist_id": self.artist.id }
         response = self.client.post(self.list_url, no_title_data, format="json")
@@ -172,11 +191,13 @@ class HitAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_create_hit_unknown_artist(self):
+        """Test hit creation with non-existent artist."""
         data = { "artist_id": 999, "title": "What A Wonderful World" }
         response = self.client.post(self.list_url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
     
     def test_create_empty_hit(self):
+        """Test hit creation with empty data."""
         data = {}
         response = self.client.post(self.list_url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -186,6 +207,7 @@ class HitAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_retrieve_hit_success(self):
+        """Test successful hit retrieval."""
         title = "What A Wonderful World"
         title_url = generate_title_url(self.artist, title)
         hit = Hit.objects.create(
@@ -199,11 +221,13 @@ class HitAPITestCase(APITestCase):
         self.assertEqual(response.data['title'], title)
 
     def test_retrieve_hit_not_existing(self):
+        """Test retrieving non-existent hit."""
         url = reverse("hit-detail", args=["not_existing_url"])
         response = self.client.get(url, format="json")
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_list_hits(self):
+        """Test listing all hits."""
         title_1 = "Hit1"
         title_2 = "Hit2"
         Hit.objects.create(
@@ -219,6 +243,7 @@ class HitAPITestCase(APITestCase):
         self.assertGreaterEqual(len(response.data), 2)
 
     def test_list_hits_ordering(self):
+        """Test hit list ordering by creation date."""
         title_1 = "Hit1"
         title_2 = "Hit2"
         Hit.objects.create(
@@ -240,6 +265,7 @@ class HitAPITestCase(APITestCase):
             )
 
     def test_patch_hit(self):
+        """Test partial hit update."""
         artist = Artist.objects.create(first_name="Sanah")
         hit = Hit.objects.create(
             artist=self.artist,
@@ -273,6 +299,7 @@ class HitAPITestCase(APITestCase):
         self.assertEqual(response.data["title_url"], "long_url")
     
     def test_put_hit(self):
+        """Test complete hit update."""
         artist = Artist.objects.create(first_name="Sanah")
         hit = Hit.objects.create(
             artist=self.artist,
@@ -296,9 +323,10 @@ class HitAPITestCase(APITestCase):
         self.assertEqual(response.data["title_url"], new_url)
 
     def test_patch_hit_not_existing(self):
+        """Test updating non-existent hit."""
         artist = Artist.objects.create(first_name="Sanah")
         detail_url = reverse("hit-detail", args=["not_existing_url"])
-        response = self.client.put(
+        response = self.client.patch(
             detail_url, 
             data={ 
                 "artist_id": artist.id,
@@ -310,6 +338,7 @@ class HitAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_delete_hit(self):
+        """Test hit deletion."""
         hit = Hit.objects.create(
             artist=self.artist,
             title="Koronki",
@@ -321,6 +350,7 @@ class HitAPITestCase(APITestCase):
         self.assertFalse(Hit.objects.filter(title_url=hit.title_url).exists())
 
     def test_delete_hit_not_existing(self):
+        """Test deleting non-existent hit."""
         detail_url = reverse("hit-detail", args=["not_existing_url"])
         response = self.client.delete(detail_url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
