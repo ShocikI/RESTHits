@@ -2,6 +2,14 @@ from django.db import models
 
 
 class Artist(models.Model):
+    """
+    Represents a musical artist in the system.
+    
+    Attributes:
+        first_name (str): The artist's first name. Required, max length 32 characters.
+        last_name (str): The artist's last name. Required, max length 32 characters.
+        created_at (date): The date when the artist was added to the system. Automatically set.
+    """
     first_name = models.CharField(max_length=32, blank=False)
     last_name = models.CharField(max_length=32, blank=False)
     created_at = models.DateField(auto_now_add=True)
